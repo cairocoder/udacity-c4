@@ -1,24 +1,31 @@
-import 'source-map-support/register'
-
-import { APIGatewayProxyEvent, APIGatewayProxyHandler, APIGatewayProxyResult } from 'aws-lambda'
-import { CreateTodoRequest } from '../../requests/createTodoRequest'
-import { getUserId} from '../../helpers/authHelper'
-import { TodosAccess } from '../../dataLayer/todosAccess'
-import { ApiResponseHelper } from '../../helpers/apiResponseHelper'
-import { createLogger } from '../../utils/logger'
-
-const logger = createLogger('todos')
+import 'source-map-support/register';
+import { APIGatewayProxyEvent, APIGatewayProxyHandler, APIGatewayProxyResult } from 'aws-lambda';
+import { CreateTodoRequest } from '../../requests/CreateTodoRequest';
+import { createTodo } from '../../bll/todos';
 
 export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
-  
-    const newTodo: CreateTodoRequest = JSON.parse(event.body)
+  const newTodo: CreateTodoRequest = JSON.parse(event.body);
 
-    
-    const authHeader = event.headers['Authorization']
-    const userId = getUserId(authHeader)
-    logger.info(`create group for user ${userId} with data ${newTodo}`)
-    const item = await new TodosAccess().createTodo(newTodo,userId)
-    
-    return new ApiResponseHelper().generateDataSuccessResponse(201,'item',item)
+  // todoItem cannot  is not empty
+  if (!newTodo.name) {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({
+        error: 'name is empty'
+      })
+    };
+  }
 
+  const todoItem = await createTodo(event, newTodo);
+
+  return {
+    statusCode: 201,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Credentials': true
+    },
+    body: JSON.stringify({
+      item: todoItem
+    })
+  };
 }
